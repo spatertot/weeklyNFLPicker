@@ -109,7 +109,7 @@ function App() {
       )
     );
     await gameURLs.forEach((url) => {
-      fetch(url).then((response) =>
+      fetch(url.replace("http", "https")).then((response) =>
         response.json().then((json) => {
           convertFromESPNtoSimple(json.shortName);
         })
