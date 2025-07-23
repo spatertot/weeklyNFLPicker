@@ -12,7 +12,7 @@ function TeamCard({ teamName, onSelectedTeam }: Props) {
           onSelectedTeam(teamName);
         }}
       >
-        <div className="card-body">This is a card for {teamName}.</div>
+        <div className="card-body">{teamName}</div>
       </div>
     </>
   );
