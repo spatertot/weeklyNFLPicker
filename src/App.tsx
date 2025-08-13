@@ -19,6 +19,7 @@ function App() {
   const [isFinished, setFinishedBoolean] = useState(false);
   const [dataFetched, setDataFetchedBoolean] = useState(false);
   const [schedule, setSchedule] = useState<Array<ScheduleFormat>>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const nameMapping = {
     DAL: "Cowboys",
     KC: "Chiefs",
@@ -97,34 +98,39 @@ function App() {
   };
 
   const getData = async (week: string) => {
-    await fetch(
-      "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/types/2/weeks/" +
-      week +
-      "/events?lang=en&region=us"
-    ).then((response) =>
-      response.json().then((json) =>
-        json.items.forEach((item: { $ref: string }) => {
-          gameURLs.push(item.$ref);
-        })
-      )
-    );
-    await gameURLs.forEach((url) => {
-      fetch(url.replace("http", "https")).then((response) =>
-        response.json().then((json) => {
-          convertFromESPNtoSimple(json.shortName);
-        })
-      );
-    });
-    setSchedule(tempSchedule);
+    setIsLoading(true);
+    gameURLs = [];
+    tempSchedule = [];
 
+    const response = await fetch(
+      "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/types/2/weeks/" +
+        week +
+        "/events?lang=en&region=us"
+    );
+    const json = await response.json();
+    json.items.forEach((item: { $ref: string }) => {
+      gameURLs.push(item.$ref);
+    });
+
+    await Promise.all(
+      gameURLs.map(async (url) => {
+        const res = await fetch(url.replace("http", "https"));
+        const gameJson = await res.json();
+        convertFromESPNtoSimple(gameJson.shortName);
+      })
+    );
+
+    setSchedule([...tempSchedule]);
     setDataFetchedBoolean(true);
+    setIsLoading(false);
+    setStartedBoolean(true); // Start app automatically after data is fetched
   };
 
   const startApp = () => {
     setStartedBoolean(true);
   };
 
-  if (!isStarted && !isFinished && !dataFetched) {
+  if (!isStarted && !isFinished && !dataFetched && !isLoading) {
     return (
     <>
       <h1>Which Week?</h1>
@@ -146,18 +152,14 @@ function App() {
     </>
   );
   }
-  if (!isStarted && !isFinished && dataFetched) {
+  if (isLoading) {
     return (
-    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
-      <button
-        type="button"
-        className="btn btn-primary btn-lg px-5 py-3"
-        onClick={startApp}
-      >
-        Start
-      </button>
-    </div>
-  );
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
   }
   if (isStarted && schedule[0] !== undefined && !isFinished) {
     return (
