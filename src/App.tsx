@@ -169,12 +169,8 @@ function App() {
         style={{ minHeight: "100vh" }}
       >
         <div
-          className="col-6 d-flex justify-content-center align-items-center"
-          style={{
-            borderRight: "3px solid #000",
-            minHeight: "100vh",
-            padding: 0,
-          }}
+          className="col-5 d-flex justify-content-center align-items-center"
+          
         >
           <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
             <TeamCard
@@ -183,7 +179,37 @@ function App() {
             />
           </div>
         </div>
-        <div className="col-6 d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", padding: 0 }}>
+        <div className="col-2 d-flex flex-column justify-content-center align-items-center position-relative" style={{ minHeight: "100vh" }}>
+          {/* Vertical line above '@' */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: 0,
+              width: "0",
+              height: "45%",
+              borderLeft: "3px solid #000",
+              transform: "translateX(-50%)"
+            }}
+          />
+          {/* '@' symbol */}
+          <span style={{ fontSize: "2rem", zIndex: 1, background: "#fff", padding: "0 8px" }}>
+            @
+          </span>
+          {/* Vertical line below '@' */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: 0,
+              width: "0",
+              height: "45%",
+              borderLeft: "3px solid #000",
+              transform: "translateX(-50%)"
+            }}
+          />
+        </div>
+        <div className="col-5 d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", padding: 0 }}>
           <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
             <TeamCard
               teamName={schedule[gameIndex].team2}
