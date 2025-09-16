@@ -126,10 +126,6 @@ function App() {
     setStartedBoolean(true); // Start app automatically after data is fetched
   };
 
-  const startApp = () => {
-    setStartedBoolean(true);
-  };
-
   if (!isStarted && !isFinished && !dataFetched && !isLoading) {
     return (
     <>
