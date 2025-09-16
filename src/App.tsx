@@ -85,18 +85,6 @@ function App() {
     }
   };
 
-  const convertFromESPNtoSimple = (espnGameName: string) => {
-    let tempTeamArray: string[] = espnGameName.split("@");
-    if (tempTeamArray[1] === undefined) {
-      tempTeamArray = espnGameName.split("VS");
-    }
-    let tempScheduleFormat: ScheduleFormat = {
-      team1: nameMap.get(tempTeamArray[0].trim())!,
-      team2: nameMap.get(tempTeamArray[1].trim())!,
-    };
-    tempSchedule.push(tempScheduleFormat);
-  };
-
   const getData = async (week: string) => {
     setIsLoading(true);
     gameURLs = [];
@@ -112,13 +100,25 @@ function App() {
       gameURLs.push(item.$ref);
     });
 
-    await Promise.all(
+    // Fetch all game data in order
+    const gameJsons = await Promise.all(
       gameURLs.map(async (url) => {
         const res = await fetch(url.replace("http", "https"));
-        const gameJson = await res.json();
-        convertFromESPNtoSimple(gameJson.shortName);
+        return await res.json();
       })
     );
+
+    // Convert each game in order
+    tempSchedule = gameJsons.map((gameJson: any) => {
+      let tempTeamArray: string[] = gameJson.shortName.split("@");
+      if (tempTeamArray[1] === undefined) {
+        tempTeamArray = gameJson.shortName.split("VS");
+      }
+      return {
+        team1: nameMap.get(tempTeamArray[0].trim())!,
+        team2: nameMap.get(tempTeamArray[1].trim())!,
+      };
+    });
 
     setSchedule([...tempSchedule]);
     setDataFetchedBoolean(true);
