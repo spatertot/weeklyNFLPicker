@@ -19,6 +19,7 @@ function App() {
   const [isFinished, setFinishedBoolean] = useState(false);
   const [dataFetched, setDataFetchedBoolean] = useState(false);
   const [schedule, setSchedule] = useState<Array<ScheduleFormat>>([]);
+  const [isLoading, setIsLoading] = useState(false);
   const nameMapping = {
     DAL: "Cowboys",
     KC: "Chiefs",
@@ -97,34 +98,39 @@ function App() {
   };
 
   const getData = async (week: string) => {
-    await fetch(
-      "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/types/2/weeks/" +
-      week +
-      "/events?lang=en&region=us"
-    ).then((response) =>
-      response.json().then((json) =>
-        json.items.forEach((item: { $ref: string }) => {
-          gameURLs.push(item.$ref);
-        })
-      )
-    );
-    await gameURLs.forEach((url) => {
-      fetch(url.replace("http", "https")).then((response) =>
-        response.json().then((json) => {
-          convertFromESPNtoSimple(json.shortName);
-        })
-      );
-    });
-    setSchedule(tempSchedule);
+    setIsLoading(true);
+    gameURLs = [];
+    tempSchedule = [];
 
+    const response = await fetch(
+      "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/types/2/weeks/" +
+        week +
+        "/events?lang=en&region=us"
+    );
+    const json = await response.json();
+    json.items.forEach((item: { $ref: string }) => {
+      gameURLs.push(item.$ref);
+    });
+
+    await Promise.all(
+      gameURLs.map(async (url) => {
+        const res = await fetch(url.replace("http", "https"));
+        const gameJson = await res.json();
+        convertFromESPNtoSimple(gameJson.shortName);
+      })
+    );
+
+    setSchedule([...tempSchedule]);
     setDataFetchedBoolean(true);
+    setIsLoading(false);
+    setStartedBoolean(true); // Start app automatically after data is fetched
   };
 
   const startApp = () => {
     setStartedBoolean(true);
   };
 
-  if (!isStarted && !isFinished && !dataFetched) {
+  if (!isStarted && !isFinished && !dataFetched && !isLoading) {
     return (
     <>
       <h1>Which Week?</h1>
@@ -146,18 +152,14 @@ function App() {
     </>
   );
   }
-  if (!isStarted && !isFinished && dataFetched) {
+  if (isLoading) {
     return (
-    <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
-      <button
-        type="button"
-        className="btn btn-primary btn-lg px-5 py-3"
-        onClick={startApp}
-      >
-        Start
-      </button>
-    </div>
-  );
+      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
+        <div className="spinner-border text-primary" role="status">
+          <span className="visually-hidden">Loading...</span>
+        </div>
+      </div>
+    );
   }
   if (isStarted && schedule[0] !== undefined && !isFinished) {
     return (
@@ -167,12 +169,8 @@ function App() {
         style={{ minHeight: "100vh" }}
       >
         <div
-          className="col-6 d-flex justify-content-center align-items-center"
-          style={{
-            borderRight: "3px solid #000",
-            minHeight: "100vh",
-            padding: 0,
-          }}
+          className="col-5 d-flex justify-content-center align-items-center"
+          
         >
           <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
             <TeamCard
@@ -181,7 +179,37 @@ function App() {
             />
           </div>
         </div>
-        <div className="col-6 d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", padding: 0 }}>
+        <div className="col-2 d-flex flex-column justify-content-center align-items-center position-relative" style={{ minHeight: "100vh" }}>
+          {/* Vertical line above '@' */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              top: 0,
+              width: "0",
+              height: "45%",
+              borderLeft: "3px solid #000",
+              transform: "translateX(-50%)"
+            }}
+          />
+          {/* '@' symbol */}
+          <span style={{ fontSize: "2rem", zIndex: 1, background: "#fff", padding: "0 8px" }}>
+            @
+          </span>
+          {/* Vertical line below '@' */}
+          <div
+            style={{
+              position: "absolute",
+              left: "50%",
+              bottom: 0,
+              width: "0",
+              height: "45%",
+              borderLeft: "3px solid #000",
+              transform: "translateX(-50%)"
+            }}
+          />
+        </div>
+        <div className="col-5 d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", padding: 0 }}>
           <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
             <TeamCard
               teamName={schedule[gameIndex].team2}
