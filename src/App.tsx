@@ -10,6 +10,9 @@ function App() {
   interface ScheduleFormat {
     team1: string;
     team2: string;
+    team1Record: string;
+    team2Record: string;
+    vsFlag: boolean;
   }
 
   let tempSchedule: ScheduleFormat[] = [];
@@ -20,6 +23,7 @@ function App() {
   const [dataFetched, setDataFetchedBoolean] = useState(false);
   const [schedule, setSchedule] = useState<Array<ScheduleFormat>>([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [copied, setCopied] = useState(false); // Add this state
   const nameMapping = {
     DAL: "Cowboys",
     KC: "Chiefs",
@@ -109,16 +113,38 @@ function App() {
     );
 
     // Convert each game in order
-    tempSchedule = gameJsons.map((gameJson: any) => {
+    tempSchedule = await Promise.all(gameJsons.map(async (gameJson: any) => {
+      let vsFlag = false;
       let tempTeamArray: string[] = gameJson.shortName.split("@");
       if (tempTeamArray[1] === undefined) {
         tempTeamArray = gameJson.shortName.split("VS");
+        vsFlag = true;
       }
+
+      // Extract records from competitors array
+      let team1Record = "";
+      let team2Record = "";
+
+      const competitors = gameJson.competitions[0].competitors;
+      for (const competitor of competitors) {
+        const recordRes = await fetch(competitor.record.$ref.replace("http", "https"));
+        const recordJson = await recordRes.json();
+        const displayValue = recordJson.items[0].displayValue;
+        if (competitor.homeAway === "home") {
+          team2Record = displayValue;
+        } else if (competitor.homeAway === "away") {
+          team1Record = displayValue;
+        }
+      }
+
       return {
         team1: nameMap.get(tempTeamArray[0].trim())!,
         team2: nameMap.get(tempTeamArray[1].trim())!,
+        team1Record,
+        team2Record,
+        vsFlag
       };
-    });
+    }));
 
     setSchedule([...tempSchedule]);
     setDataFetchedBoolean(true);
@@ -164,19 +190,17 @@ function App() {
         className="row justify-content-center align-items-center"
         style={{ minHeight: "100vh" }}
       >
-        <div
-          className="col-5 d-flex justify-content-center align-items-center"
-          
-        >
+        <div className="col-5 d-flex justify-content-center align-items-center">
           <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
             <TeamCard
               teamName={schedule[gameIndex].team1}
+              teamRecord={schedule[gameIndex].team1Record}
               onSelectedTeam={handleSelectTeam}
             />
           </div>
         </div>
         <div className="col-2 d-flex flex-column justify-content-center align-items-center position-relative" style={{ minHeight: "100vh" }}>
-          {/* Vertical line above '@' */}
+          {/* Vertical line above symbol */}
           <div
             style={{
               position: "absolute",
@@ -188,11 +212,11 @@ function App() {
               transform: "translateX(-50%)"
             }}
           />
-          {/* '@' symbol */}
+          {/* '@' or 'VS' symbol */}
           <span style={{ fontSize: "2rem", zIndex: 1, background: "#fff", padding: "0 8px" }}>
-            @
+            {schedule[gameIndex].vsFlag ? "VS" : "@"}
           </span>
-          {/* Vertical line below '@' */}
+          {/* Vertical line below symbol */}
           <div
             style={{
               position: "absolute",
@@ -209,6 +233,7 @@ function App() {
           <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
             <TeamCard
               teamName={schedule[gameIndex].team2}
+              teamRecord={schedule[gameIndex].team2Record}
               onSelectedTeam={handleSelectTeam}
             />
           </div>
@@ -220,6 +245,8 @@ function App() {
   if (isFinished) {
     const handleCopy = () => {
       navigator.clipboard.writeText(teamPicks.join('\n'));
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500); // Hide notification after 1.5s
     };
 
     return (
@@ -238,6 +265,20 @@ function App() {
         >
           Copy Picks
         </button>
+        {/* Notification */}
+        <div
+          style={{
+            opacity: copied ? 1 : 0,
+            transition: "opacity 0.3s",
+            marginTop: "10px",
+            color: "green",
+            fontWeight: "bold",
+            fontSize: "1rem"
+          }}
+          aria-live="polite"
+        >
+          Picks copied!
+        </div>
       </div>
     );
   }
