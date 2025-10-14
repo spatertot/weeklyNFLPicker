@@ -1,9 +1,10 @@
 interface Props {
   teamName: string;
+  teamRecord: string;
   onSelectedTeam: (teamName: string) => void;
 }
 
-function TeamCard({ teamName, onSelectedTeam }: Props) {
+function TeamCard({ teamName, teamRecord, onSelectedTeam }: Props) {
   return (
     <>
       <div
@@ -13,6 +14,8 @@ function TeamCard({ teamName, onSelectedTeam }: Props) {
         }}
       >
         <div className="card-body">{teamName}</div>
+        <p>{teamRecord}</p>
+
       </div>
     </>
   );
