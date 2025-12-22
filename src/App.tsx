@@ -192,12 +192,22 @@ function App() {
         className="row justify-content-center align-items-center"
         style={{ minHeight: "100vh" }}
       >
-        <div className="col-5 d-flex justify-content-center align-items-center">
-          <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
+        <div
+          className="col-5 d-flex justify-content-center align-items-stretch"
+          style={{ height: "100vh", padding: 0, cursor: "pointer" }}
+          onClick={() => handleSelectTeam(schedule[gameIndex].team1)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleSelectTeam(schedule[gameIndex].team1);
+          }}
+          aria-label={`Select ${schedule[gameIndex].team1}`}
+        >
+          <div className="w-100 h-100 d-flex align-items-stretch justify-content-center" style={{ height: "100%" }}>
             <TeamCard
               teamName={schedule[gameIndex].team1}
               teamRecord={schedule[gameIndex].team1Record}
-              onSelectedTeam={handleSelectTeam}
+              onSelectedTeam={handleSelectTeam} // still fine to keep for direct child usage
             />
           </div>
         </div>
@@ -231,8 +241,18 @@ function App() {
             }}
           />
         </div>
-        <div className="col-5 d-flex justify-content-center align-items-center" style={{ minHeight: "100vh", padding: 0 }}>
-          <div className="w-100 d-flex align-items-center justify-content-center" style={{ minHeight: "40vh" }}>
+        <div
+          className="col-5 d-flex justify-content-center align-items-stretch"
+          style={{ height: "100vh", padding: 0, cursor: "pointer" }}
+          onClick={() => handleSelectTeam(schedule[gameIndex].team2)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") handleSelectTeam(schedule[gameIndex].team2);
+          }}
+          aria-label={`Select ${schedule[gameIndex].team2}`}
+        >
+          <div className="w-100 h-100 d-flex align-items-stretch justify-content-center" style={{ height: "100%" }}>
             <TeamCard
               teamName={schedule[gameIndex].team2}
               teamRecord={schedule[gameIndex].team2Record}
