@@ -4,7 +4,7 @@ interface Props {
   onSelectedTeam: (teamName: string) => void;
 }
 
-function TeamCard({ teamName, teamRecord, onSelectedTeam }: Props) {
+function TeamCard({ teamName, teamRecord }: Props) {
   // load all logo assets at build time (Vite)
   const images = import.meta.glob('../assets/nflLogos/*.{png,jpg,jpeg,svg}', { eager: true }) as Record<string, { default: string }>;
 
