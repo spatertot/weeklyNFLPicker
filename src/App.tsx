@@ -7,6 +7,18 @@ let teamPicks: string[] = [];
 function App() {
   let gameURLs: string[] = [];
 
+  // Dynamically determine the current NFL season
+  // NFL season runs September - February of next year
+  const getCurrentNFLSeason = (): number => {
+    const now = new Date();
+    const currentMonth = now.getMonth() + 1; // getMonth() returns 0-11
+    const currentYear = now.getFullYear();
+    
+    // If we're in August (month 8) or later, the season is the current year
+    // If we're before August, the season started last year
+    return currentMonth >= 8 ? currentYear : currentYear - 1;
+  };
+
   interface ScheduleFormat {
     team1: string;
     team2: string;
@@ -96,8 +108,11 @@ function App() {
     gameURLs = [];
     tempSchedule = [];
 
+    const currentSeason = getCurrentNFLSeason();
     const response = await fetch(
-      "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/2025/types/2/weeks/" +
+      "https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/" +
+        currentSeason +
+        "/types/2/weeks/" +
         week +
         "/events?lang=en&region=us"
     );
