@@ -37,7 +37,9 @@ function App() {
   const [copied, setCopied] = useState(false); // Add this state
   const [currentWeek, setCurrentWeek] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [showWeekMenu, setShowWeekMenu] = useState(false);
   const hasInitializedRef = useRef(false);
+  const weekOptions = Array.from({ length: 18 }, (_, index) => (index + 1).toString());
   const nameMapping = {
     DAL: "Cowboys",
     KC: "Chiefs",
@@ -91,6 +93,7 @@ function App() {
     setFinishedBoolean(false);
     setStartedBoolean(false);
     setIsLoading(true);
+    setCurrentWeek(week);
     gameURLs = [];
     tempSchedule = [];
 
@@ -259,13 +262,75 @@ function App() {
   }
   if (isStarted && schedule[0] !== undefined && !isFinished) {
     return (
-    <div className="container-fluid text-center">
-      <div className="pt-3 pb-2 text-center">
+    <div className="container-fluid text-center" style={{ position: "relative" }}>
+      <div
+        style={{
+          position: "fixed",
+          top: 0,
+          left: 0,
+          width: showWeekMenu ? 220 : 52,
+          height: "100vh",
+          background: "#f8f9fa",
+          borderRight: "1px solid #dee2e6",
+          transition: "width 0.2s ease",
+          overflow: "hidden",
+          zIndex: 10,
+          boxShadow: "2px 0 8px rgba(0,0,0,0.08)"
+        }}
+      >
+        <div
+          style={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: showWeekMenu ? "space-between" : "center",
+            padding: "12px 10px",
+            borderBottom: "1px solid #dee2e6",
+            cursor: "pointer",
+            minHeight: 52
+          }}
+          onClick={() => setShowWeekMenu(!showWeekMenu)}
+          role="button"
+          tabIndex={0}
+          onKeyDown={(e) => {
+            if (e.key === "Enter" || e.key === " ") setShowWeekMenu(!showWeekMenu);
+          }}
+        >
+          <span style={{ fontSize: 24, lineHeight: 1 }}>{showWeekMenu ? "×" : "☰"}</span>
+          {showWeekMenu && <span style={{ fontWeight: 700, fontSize: 14 }}>Weeks</span>}
+        </div>
+
+        {showWeekMenu && (
+          <div style={{ padding: "12px 10px" }}>
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#555" }}>
+              Current: Week {currentWeek ?? "?"}
+            </div>
+            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "calc(100vh - 72px)", overflowY: "auto" }}>
+              {weekOptions.map((week) => (
+                <button
+                  key={week}
+                  type="button"
+                  className={`btn btn-sm ${currentWeek === week ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => {
+                    setShowWeekMenu(false);
+                    setCurrentWeek(week);
+                    getData(week);
+                  }}
+                  style={{ width: "100%", textAlign: "center" }}
+                >
+                  Week {week}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
+
+      <div className="pt-3 pb-2 text-center" style={{ marginLeft: showWeekMenu ? 220 : 52 }}>
         <h2 className="mb-0">Week {currentWeek ?? "?"}</h2>
       </div>
       <div
         className="row justify-content-center align-items-center"
-        style={{ minHeight: "100vh" }}
+        style={{ minHeight: "100vh", marginLeft: showWeekMenu ? 220 : 52 }}
       >
         <div
           className="col-5 d-flex justify-content-center align-items-stretch"
@@ -353,6 +418,35 @@ function App() {
             Week {currentWeek ?? "?"}
           </span>
         </div>
+        <div className="mb-3 d-flex justify-content-center align-items-center gap-2">
+          <button
+            type="button"
+            className="btn btn-outline-primary btn-sm"
+            onClick={() => setShowWeekMenu(!showWeekMenu)}
+          >
+            {showWeekMenu ? "Hide weeks" : "Choose week"}
+          </button>
+        </div>
+        {showWeekMenu && (
+          <div className="mb-3" style={{ maxHeight: 240, overflowY: "auto" }}>
+            <div className="d-flex flex-wrap justify-content-center gap-2" style={{ maxWidth: 420 }}>
+              {weekOptions.map((week) => (
+                <button
+                  key={week}
+                  type="button"
+                  className={`btn btn-sm ${currentWeek === week ? "btn-primary" : "btn-outline-primary"}`}
+                  onClick={() => {
+                    setShowWeekMenu(false);
+                    setCurrentWeek(week);
+                    getData(week);
+                  }}
+                >
+                  Week {week}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
         <h1 className="mb-4">Your Picks</h1>
         <ul className="list-group mb-4 w-100" style={{ maxWidth: 400 }}>
           {teamPicks.map((team) => (
