@@ -1,6 +1,6 @@
 import "bootstrap/dist/css/bootstrap.css";
 import TeamCard from "./components/TeamCard.tsx";
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 
 let teamPicks: string[] = [];
 
@@ -32,10 +32,12 @@ function App() {
   const [gameIndex, setGameIndex] = useState(0);
   const [isStarted, setStartedBoolean] = useState(false);
   const [isFinished, setFinishedBoolean] = useState(false);
-  const [dataFetched, setDataFetchedBoolean] = useState(false);
   const [schedule, setSchedule] = useState<Array<ScheduleFormat>>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false); // Add this state
+  const [currentWeek, setCurrentWeek] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const hasInitializedRef = useRef(false);
   const nameMapping = {
     DAL: "Cowboys",
     KC: "Chiefs",
@@ -71,26 +73,6 @@ function App() {
     CHI: "Bears",
   };
   const nameMap = new Map(Object.entries(nameMapping));
-  const weeks: string[] = [
-    "1",
-    "2",
-    "3",
-    "4",
-    "5",
-    "6",
-    "7",
-    "8",
-    "9",
-    "10",
-    "11",
-    "12",
-    "13",
-    "14",
-    "15",
-    "16",
-    "17",
-    "18"
-  ];
 
   const handleSelectTeam = (selectedTeamName: string) => {
     teamPicks.push(selectedTeamName);
@@ -104,6 +86,10 @@ function App() {
   };
 
   const getData = async (week: string) => {
+    teamPicks = [];
+    setGameIndex(0);
+    setFinishedBoolean(false);
+    setStartedBoolean(false);
     setIsLoading(true);
     gameURLs = [];
     tempSchedule = [];
@@ -164,45 +150,119 @@ function App() {
     }));
 
     setSchedule([...tempSchedule]);
-    setDataFetchedBoolean(true);
     setIsLoading(false);
     setStartedBoolean(true); // Start app automatically after data is fetched
   };
 
-  if (!isStarted && !isFinished && !dataFetched && !isLoading) {
+  const determineCurrentWeek = async (): Promise<string> => {
+    const currentSeason = getCurrentNFLSeason();
+    const response = await fetch(
+      `https://sports.core.api.espn.com/v2/sports/football/leagues/nfl/seasons/${currentSeason}/types/2/weeks?lang=en&region=us`
+    );
+
+    if (!response.ok) {
+      return "1";
+    }
+
+    const json = await response.json();
+    const weekRefs = Array.isArray(json.items) ? json.items : [];
+
+    if (weekRefs.length === 0) {
+      return "1";
+    }
+
+    const weekDetails = (await Promise.all(
+      weekRefs.map(async (item: { $ref: string }) => {
+        const url = item.$ref.replace("http://", "https://");
+        const res = await fetch(url);
+        if (!res.ok) {
+          return null;
+        }
+        return await res.json();
+      })
+    )).filter(Boolean);
+
+    if (weekDetails.length === 0) {
+      return "1";
+    }
+
+    const sortedWeeks = [...weekDetails].sort((a: any, b: any) => Number(a.number) - Number(b.number));
+    const now = new Date();
+    const matchingWeek = sortedWeeks.find((week: any) => {
+      const startDate = new Date(week.startDate);
+      const endDate = new Date(week.endDate);
+      return !Number.isNaN(startDate.getTime()) && !Number.isNaN(endDate.getTime()) && now >= startDate && now <= endDate;
+    });
+
+    if (matchingWeek) {
+      return matchingWeek.number.toString();
+    }
+
+    const firstWeek = sortedWeeks[0];
+    const lastWeek = sortedWeeks[sortedWeeks.length - 1];
+    const firstStart = new Date(firstWeek.startDate);
+    const lastEnd = new Date(lastWeek.endDate);
+
+    if (!Number.isNaN(firstStart.getTime()) && now < firstStart) {
+      return firstWeek.number.toString();
+    }
+
+    if (!Number.isNaN(lastEnd.getTime()) && now > lastEnd) {
+      return lastWeek.number.toString();
+    }
+
+    return firstWeek.number.toString();
+  };
+
+  useEffect(() => {
+    if (hasInitializedRef.current) {
+      return;
+    }
+    hasInitializedRef.current = true;
+
+    const initialize = async () => {
+      setIsLoading(true);
+      try {
+        const week = await determineCurrentWeek();
+        setCurrentWeek(week);
+        await getData(week);
+      } catch (err) {
+        setError("Unable to determine or load the current NFL week.");
+        setIsLoading(false);
+      }
+    };
+
+    initialize();
+  }, []);
+
+  if (error) {
     return (
-    <>
-      <h1>Which Week?</h1>
-      <div className="container">
-        <div className="row g-2">
-          {weeks.map((week) => (
-            <div className="col-4 d-flex justify-content-center" key={week}>
-              <button
-                type="button"
-                className="btn btn-primary w-100"
-                onClick={() => getData(week)}
-              >
-                {week}
-              </button>
-            </div>
-          ))}
-        </div>
+      <div className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+        <h1 className="mb-4">Error</h1>
+        <p>{error}</p>
+        <button className="btn btn-primary" onClick={() => window.location.reload()}>
+          Reload
+        </button>
       </div>
-    </>
-  );
+    );
   }
+
   if (isLoading) {
     return (
-      <div className="d-flex justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
+      <div className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "60vh" }}>
+        <div className="spinner-border text-primary mb-3" role="status">
+          <span className="visually-hidden">Loading current week...</span>
         </div>
+        <div>{currentWeek ? `Loading Week ${currentWeek} schedule...` : "Determining current NFL week..."}</div>
       </div>
     );
   }
   if (isStarted && schedule[0] !== undefined && !isFinished) {
     return (
     <div className="container-fluid text-center">
+      <div className="pt-3 pb-2 text-center">
+        <h2 className="mb-0">Week {currentWeek ?? "?"}</h2>
+      </div>
       <div
         className="row justify-content-center align-items-center"
         style={{ minHeight: "100vh" }}
@@ -288,6 +348,11 @@ function App() {
 
     return (
       <div className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
+        <div className="mb-3 text-center">
+          <span className="badge bg-primary px-3 py-2" style={{ fontSize: "1rem" }}>
+            Week {currentWeek ?? "?"}
+          </span>
+        </div>
         <h1 className="mb-4">Your Picks</h1>
         <ul className="list-group mb-4 w-100" style={{ maxWidth: 400 }}>
           {teamPicks.map((team) => (
