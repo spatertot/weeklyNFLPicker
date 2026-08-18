@@ -38,6 +38,7 @@ function App() {
   const [currentWeek, setCurrentWeek] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [showWeekMenu, setShowWeekMenu] = useState(false);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 768);
   const hasInitializedRef = useRef(false);
   const weekOptions = Array.from({ length: 18 }, (_, index) => (index + 1).toString());
   const nameMapping = {
@@ -238,6 +239,16 @@ function App() {
     initialize();
   }, []);
 
+  // Handle window resize for mobile detection
+  useEffect(() => {
+    const handleResize = () => {
+      setIsMobile(window.innerWidth < 768);
+    };
+
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
   if (error) {
     return (
       <div className="d-flex flex-column justify-content-center align-items-center" style={{ minHeight: "100vh" }}>
@@ -263,48 +274,135 @@ function App() {
   if (isStarted && schedule[0] !== undefined && !isFinished) {
     return (
     <div className="container-fluid text-center" style={{ position: "relative" }}>
-      <div
-        style={{
-          position: "fixed",
-          top: 0,
-          left: 0,
-          width: showWeekMenu ? 220 : 52,
-          height: "100vh",
-          background: "#f8f9fa",
-          borderRight: "1px solid #dee2e6",
-          transition: "width 0.2s ease",
-          overflow: "hidden",
-          zIndex: 10,
-          boxShadow: "2px 0 8px rgba(0,0,0,0.08)"
-        }}
-      >
+      {/* Desktop Sidebar - Hidden on mobile */}
+      {!isMobile && (
         <div
           style={{
-            display: "flex",
-            alignItems: "center",
-            justifyContent: showWeekMenu ? "space-between" : "center",
-            padding: "12px 10px",
-            borderBottom: "1px solid #dee2e6",
-            cursor: "pointer",
-            minHeight: 52
-          }}
-          onClick={() => setShowWeekMenu(!showWeekMenu)}
-          role="button"
-          tabIndex={0}
-          onKeyDown={(e) => {
-            if (e.key === "Enter" || e.key === " ") setShowWeekMenu(!showWeekMenu);
+            position: "fixed",
+            top: 0,
+            left: 0,
+            width: showWeekMenu ? 220 : 52,
+            height: "100vh",
+            background: "#f8f9fa",
+            borderRight: "1px solid #dee2e6",
+            transition: "width 0.2s ease",
+            overflow: "hidden",
+            zIndex: 10,
+            boxShadow: "2px 0 8px rgba(0,0,0,0.08)"
           }}
         >
-          <span style={{ fontSize: 24, lineHeight: 1 }}>{showWeekMenu ? "×" : "☰"}</span>
-          {showWeekMenu && <span style={{ fontWeight: 700, fontSize: 14 }}>Weeks</span>}
-        </div>
+          <div
+            style={{
+              display: "flex",
+              alignItems: "center",
+              justifyContent: showWeekMenu ? "space-between" : "center",
+              padding: "12px 10px",
+              borderBottom: "1px solid #dee2e6",
+              cursor: "pointer",
+              minHeight: 52
+            }}
+            onClick={() => setShowWeekMenu(!showWeekMenu)}
+            role="button"
+            tabIndex={0}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") setShowWeekMenu(!showWeekMenu);
+            }}
+          >
+            <span style={{ fontSize: 24, lineHeight: 1 }}>{showWeekMenu ? "×" : "☰"}</span>
+            {showWeekMenu && <span style={{ fontWeight: 700, fontSize: 14 }}>Weeks</span>}
+          </div>
 
-        {showWeekMenu && (
-          <div style={{ padding: "12px 10px" }}>
-            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#555" }}>
+          {showWeekMenu && (
+            <div style={{ padding: "12px 10px" }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 8, color: "#555" }}>
+                Current: Week {currentWeek ?? "?"}
+              </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "calc(100vh - 72px)", overflowY: "auto" }}>
+                {weekOptions.map((week) => (
+                  <button
+                    key={week}
+                    type="button"
+                    className={`btn btn-sm ${currentWeek === week ? "btn-primary" : "btn-outline-primary"}`}
+                    onClick={() => {
+                      setShowWeekMenu(false);
+                      setCurrentWeek(week);
+                      getData(week);
+                    }}
+                    style={{ width: "100%", textAlign: "center" }}
+                  >
+                    Week {week}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Mobile FAB Button */}
+      {isMobile && (
+        <button
+          onClick={() => setShowWeekMenu(!showWeekMenu)}
+          style={{
+            position: "fixed",
+            top: 16,
+            left: 16,
+            width: 56,
+            height: 56,
+            borderRadius: "50%",
+            background: "#0d6efd",
+            border: "none",
+            color: "white",
+            fontSize: 24,
+            cursor: "pointer",
+            boxShadow: "0 4px 12px rgba(0, 0, 0, 0.15)",
+            zIndex: 20,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            transition: "all 0.3s ease"
+          }}
+          className="fab-button"
+          aria-label="Open week menu"
+        >
+          {showWeekMenu ? "×" : "☰"}
+        </button>
+      )}
+
+      {/* Mobile Modal Overlay */}
+      {isMobile && showWeekMenu && (
+        <>
+          <div
+            onClick={() => setShowWeekMenu(false)}
+            style={{
+              position: "fixed",
+              top: 0,
+              left: 0,
+              right: 0,
+              bottom: 0,
+              background: "rgba(0, 0, 0, 0.5)",
+              zIndex: 15
+            }}
+          />
+          <div
+            style={{
+              position: "fixed",
+              top: 80,
+              left: 16,
+              right: 16,
+              background: "#f8f9fa",
+              borderRadius: "8px",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.2)",
+              zIndex: 25,
+              padding: "16px",
+              maxHeight: "60vh",
+              overflowY: "auto"
+            }}
+          >
+            <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 12, color: "#555" }}>
               Current: Week {currentWeek ?? "?"}
             </div>
-            <div style={{ display: "flex", flexDirection: "column", gap: 6, maxHeight: "calc(100vh - 72px)", overflowY: "auto" }}>
+            <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
               {weekOptions.map((week) => (
                 <button
                   key={week}
@@ -322,15 +420,15 @@ function App() {
               ))}
             </div>
           </div>
-        )}
-      </div>
+        </>
+      )}
 
-      <div className="pt-3 pb-2 text-center" style={{ marginLeft: showWeekMenu ? 220 : 52 }}>
+      <div className="pt-3 pb-2 text-center" style={{ marginLeft: isMobile ? 0 : (showWeekMenu ? 220 : 52) }}>
         <h2 className="mb-0">Week {currentWeek ?? "?"}</h2>
       </div>
       <div
         className="row justify-content-center align-items-center"
-        style={{ minHeight: "100vh", marginLeft: showWeekMenu ? 220 : 52 }}
+        style={{ minHeight: "100vh", marginLeft: isMobile ? 0 : (showWeekMenu ? 220 : 52) }}
       >
         <div
           className="col-5 d-flex justify-content-center align-items-stretch"
@@ -347,7 +445,7 @@ function App() {
             <TeamCard
               teamName={schedule[gameIndex].team1}
               teamRecord={schedule[gameIndex].team1Record}
-              onSelectedTeam={handleSelectTeam} // still fine to keep for direct child usage
+              onSelectedTeam={handleSelectTeam}
             />
           </div>
         </div>
