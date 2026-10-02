@@ -13,10 +13,24 @@ interface Props {
   teamName: string;
   teamRecord: string;
   recentGames: RecentGame[];
+  isMobile: boolean;
   onSelectedTeam: (teamName: string) => void;
 }
 
-function TeamCard({ teamName, teamRecord, recentGames }: Props) {
+function TeamCard({ teamName, teamRecord, recentGames, isMobile }: Props) {
+  const mobileAbbreviations: Record<string, string> = {
+    Buccaneers: "TB",
+    Cardinals: "ARI",
+    Commanders: "WSH",
+    Dolphins: "MIA",
+    Jaguars: "JAX",
+    Patriots: "NE",
+    Panthers: "CAR",
+    Steelers: "PIT",
+    Vikings: "MIN"
+  };
+  const displayTeamName = isMobile ? (mobileAbbreviations[teamName] ?? teamName) : teamName;
+
   // load all logo assets at build time (Vite)
   const images = import.meta.glob('../assets/nflLogos/*.{png,jpg,jpeg,svg}', { eager: true }) as Record<string, { default: string }>;
 
@@ -49,7 +63,7 @@ function TeamCard({ teamName, teamRecord, recentGames }: Props) {
         /* removed onClick from here so parent wrapper handles clicks */
         style={{ width: "100%", height: "100%", boxSizing: "border-box", background: "transparent" }}
       >
-        <div className="card-body d-flex flex-column align-items-center justify-content-center text-center h-100" style={{ padding: 16 }}>
+        <div className="card-body d-flex flex-column align-items-center justify-content-center text-center h-100" style={{ padding: isMobile ? 8 : 16, minWidth: 0, width: "100%" }}>
           {logoUrl && (
             <img
               src={logoUrl}
@@ -57,8 +71,10 @@ function TeamCard({ teamName, teamRecord, recentGames }: Props) {
               style={{ width: 72, height: 72, objectFit: "contain", marginBottom: 12 }}
             />
           )}
-          <div>
-            <div style={{ fontWeight: 700 }}>{teamName}</div>
+          <div style={{ minWidth: 0, width: "100%" }}>
+            <div aria-label={teamName} title={teamName} style={{ fontWeight: 700, fontSize: isMobile ? 15 : undefined, whiteSpace: "normal", overflowWrap: "anywhere" }}>
+              {displayTeamName}
+            </div>
             <div style={{ fontSize: 12, color: "#555" }}>{teamRecord}</div>
             {recentGames.length > 0 && (
               <div
