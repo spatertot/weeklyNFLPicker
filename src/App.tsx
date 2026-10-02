@@ -541,6 +541,7 @@ function App() {
               teamName={schedule[gameIndex].team1}
               teamRecord={schedule[gameIndex].team1Record}
               recentGames={recentGamesByTeam[schedule[gameIndex].team1] ?? []}
+              isMobile={isMobile}
               onSelectedTeam={handleSelectTeam}
             />
           </div>
@@ -591,6 +592,7 @@ function App() {
               teamName={schedule[gameIndex].team2}
               teamRecord={schedule[gameIndex].team2Record}
               recentGames={recentGamesByTeam[schedule[gameIndex].team2] ?? []}
+              isMobile={isMobile}
               onSelectedTeam={handleSelectTeam}
             />
           </div>
