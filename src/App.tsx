@@ -1,5 +1,5 @@
 import "bootstrap/dist/css/bootstrap.css";
-import TeamCard from "./components/TeamCard.tsx";
+import TeamCard, { type RecentGame } from "./components/TeamCard.tsx";
 import { useState, useEffect, useRef } from "react";
 
 let teamPicks: string[] = [];
@@ -27,12 +27,37 @@ function App() {
     vsFlag: boolean;
   }
 
+  interface TeamGameResult {
+    teamName: string;
+    game: RecentGame;
+  }
+
+  interface ScoreboardCompetitor {
+    score?: string | number;
+    homeAway: string;
+    team: {
+      id: string;
+      abbreviation: string;
+      displayName: string;
+    };
+  }
+
+  interface ScoreboardEvent {
+    status?: { type?: { completed?: boolean } };
+    competitions?: Array<{ competitors?: ScoreboardCompetitor[] }>;
+  }
+
+  interface ScoreboardResponse {
+    events?: ScoreboardEvent[];
+  }
+
   let tempSchedule: ScheduleFormat[] = [];
 
   const [gameIndex, setGameIndex] = useState(0);
   const [isStarted, setStartedBoolean] = useState(false);
   const [isFinished, setFinishedBoolean] = useState(false);
   const [schedule, setSchedule] = useState<Array<ScheduleFormat>>([]);
+  const [recentGamesByTeam, setRecentGamesByTeam] = useState<Record<string, RecentGame[]>>({});
   const [isLoading, setIsLoading] = useState(true);
   const [copied, setCopied] = useState(false); // Add this state
   const [currentWeek, setCurrentWeek] = useState<string | null>(null);
@@ -97,6 +122,7 @@ function App() {
     setCurrentWeek(week);
     gameURLs = [];
     tempSchedule = [];
+    setRecentGamesByTeam({});
 
     const currentSeason = getCurrentNFLSeason();
     const response = await fetch(
@@ -153,7 +179,76 @@ function App() {
       };
     }));
 
+    const pastWeeks = Array.from({ length: Math.max(0, Number(week) - 1) }, (_, index) => index + 1);
+    const pastWeekResults = await Promise.all(pastWeeks.map(async (pastWeek) => {
+      try {
+        const response = await fetch(
+          `https://site.api.espn.com/apis/site/v2/sports/football/nfl/scoreboard?dates=${currentSeason}&seasontype=2&week=${pastWeek}`
+        );
+        if (!response.ok) return [] as TeamGameResult[];
+
+        const scoreboard: ScoreboardResponse = await response.json();
+        const events = scoreboard.events ?? [];
+        const teamsWithGames = new Set(
+          events.flatMap((event) =>
+            (event.competitions?.[0]?.competitors ?? []).map((competitor) => competitor.team.abbreviation)
+          )
+        );
+        const weekResults = events.flatMap((event): TeamGameResult[] => {
+          if (!event.status?.type?.completed) return [];
+
+          const competitors = event.competitions?.[0]?.competitors ?? [];
+          if (competitors.length !== 2 || competitors.some((competitor) =>
+            competitor.score === undefined || competitor.score === null || String(competitor.score).trim() === ""
+          )) {
+            return [];
+          }
+
+          return competitors.map((competitor, index) => {
+            const opponent = competitors[index === 0 ? 1 : 0];
+            const teamAbbreviation = competitor.team.abbreviation;
+            const opponentAbbreviation = opponent.team.abbreviation;
+
+            return {
+              teamName: nameMap.get(teamAbbreviation) ?? competitor.team.displayName,
+              game: {
+                week: pastWeek,
+                isBye: false,
+                teamScore: String(competitor.score),
+                opponentName: nameMap.get(opponentAbbreviation) ?? opponent.team.displayName,
+                opponentScore: String(opponent.score),
+                isHome: competitor.homeAway === "home"
+              }
+            };
+          });
+        });
+
+        const isWeekComplete = events.length > 0 && events.every((event) => event.status?.type?.completed);
+        if (isWeekComplete) {
+          Object.entries(nameMapping).forEach(([abbreviation, teamName]) => {
+            if (!teamsWithGames.has(abbreviation)) {
+              weekResults.push({ teamName, game: { week: pastWeek, isBye: true } });
+            }
+          });
+        }
+
+        return weekResults;
+      } catch {
+        return [] as TeamGameResult[];
+      }
+    }));
+
+    const gamesByTeam: Record<string, RecentGame[]> = {};
+    pastWeekResults.flat().forEach(({ teamName, game }) => {
+      gamesByTeam[teamName] ??= [];
+      gamesByTeam[teamName].push(game);
+    });
+    Object.keys(gamesByTeam).forEach((teamName) => {
+      gamesByTeam[teamName] = gamesByTeam[teamName].slice(-4).reverse();
+    });
+
     setSchedule([...tempSchedule]);
+    setRecentGamesByTeam(gamesByTeam);
     setIsLoading(false);
     setStartedBoolean(true); // Start app automatically after data is fetched
   };
@@ -445,6 +540,7 @@ function App() {
             <TeamCard
               teamName={schedule[gameIndex].team1}
               teamRecord={schedule[gameIndex].team1Record}
+              recentGames={recentGamesByTeam[schedule[gameIndex].team1] ?? []}
               onSelectedTeam={handleSelectTeam}
             />
           </div>
@@ -494,6 +590,7 @@ function App() {
             <TeamCard
               teamName={schedule[gameIndex].team2}
               teamRecord={schedule[gameIndex].team2Record}
+              recentGames={recentGamesByTeam[schedule[gameIndex].team2] ?? []}
               onSelectedTeam={handleSelectTeam}
             />
           </div>
